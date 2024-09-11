@@ -11,6 +11,7 @@ from vllm.model_executor.layers.vocab_parallel_embedding import (
     VocabParallelEmbedding)
 from vllm.model_executor.sampling_metadata import SamplingMetadata
 from vllm.platforms import current_platform
+from vllm.samplers.dry_sampler import DRYLogitsProcessor
 
 
 class LogitsProcessor(nn.Module):
@@ -141,6 +142,17 @@ def _apply_logits_processors(
                     else:
                         logits_row = logits_processor(past_tokens_ids,
                                                       logits_row)
+
+                # Apply DRY sampler if enabled
+                if sampling_params.dry_multiplier > 0:
+                    dry_sampler = DRYLogitsProcessor(
+                        sampling_params.dry_multiplier,
+                        sampling_params.dry_base,
+                        sampling_params.dry_allowed_length,
+                        set(sampling_params.dry_sequence_breakers),
+                        sampling_params.dry_range
+                    )
+                    logits_row = dry_sampler(past_tokens_ids, logits_row)
 
                 logits[logits_row_idx] = logits_row
 

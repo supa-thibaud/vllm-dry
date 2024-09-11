@@ -114,6 +114,18 @@ class SamplingParams(
         truncate_prompt_tokens: If set to an integer k, will use only the last k
             tokens from the prompt (i.e., left truncation). Defaults to None
             (i.e., no truncation).
+        dry_multiplier: Float that controls the strength of the DRY penalty.
+            Defaults to 0 (i.e., no DRY penalty).
+        dry_base: Float that controls the base of the DRY penalty.
+            Defaults to 1.75.
+        dry_allowed_length: Integer that controls the length of the sequence
+            that is allowed before the DRY penalty is applied.
+            Defaults to 2.
+        dry_sequence_breakers: List of strings that are considered as sequence
+            breakers for the DRY penalty.
+            Defaults to ["\n", ":", "\"", "*"].
+        dry_range: Integer that controls the range of the DRY penalty.
+            Defaults to -1 (i.e., no range limit).
     """
 
     n: int = 1
@@ -147,6 +159,11 @@ class SamplingParams(
     logits_processors: Optional[Any] = None
     include_stop_str_in_output: bool = False
     truncate_prompt_tokens: Optional[Annotated[int, msgspec.Meta(ge=1)]] = None
+    dry_multiplier: float = 0
+    dry_base: float = 1.75
+    dry_allowed_length: int = 2
+    dry_sequence_breakers: Optional[List[str]] = None
+    dry_range: int = -1
 
     # The below fields are not supposed to be used as an input.
     # They are set in post_init.
@@ -182,6 +199,11 @@ class SamplingParams(
         logits_processors: Optional[List[LogitsProcessor]] = None,
         truncate_prompt_tokens: Optional[Annotated[int,
                                                    msgspec.Meta(ge=1)]] = None,
+        dry_multiplier: float = 0,
+        dry_base: float = 1.75,
+        dry_allowed_length: int = 2,
+        dry_sequence_breakers: Optional[List[str]] = None,
+        dry_range: int = -1,
     ) -> "SamplingParams":
         return SamplingParams(
             n=1 if n is None else n,
@@ -213,6 +235,11 @@ class SamplingParams(
             spaces_between_special_tokens=spaces_between_special_tokens,
             logits_processors=logits_processors,
             truncate_prompt_tokens=truncate_prompt_tokens,
+            dry_multiplier=dry_multiplier,
+            dry_base=dry_base,
+            dry_allowed_length=dry_allowed_length,
+            dry_sequence_breakers=dry_sequence_breakers,
+            dry_range=dry_range,
         )
 
     def __post_init__(self) -> None:
@@ -429,4 +456,9 @@ class SamplingParams(
             f"skip_special_tokens={self.skip_special_tokens}, "
             "spaces_between_special_tokens="
             f"{self.spaces_between_special_tokens}, "
-            f"truncate_prompt_tokens={self.truncate_prompt_tokens})")
+            f"truncate_prompt_tokens={self.truncate_prompt_tokens}, "
+            f"dry_multiplier={self.dry_multiplier}, "
+            f"dry_base={self.dry_base}, "
+            f"dry_allowed_length={self.dry_allowed_length}, "
+            f"dry_sequence_breakers={self.dry_sequence_breakers}, "
+            f"dry_range={self.dry_range})")
