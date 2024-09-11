@@ -102,6 +102,7 @@ def get_logits_processors(
                 frozenset(allowed_token_ids), tokenizer.vocab_size))
 
     if dry_multiplier > 0:
+        print("dry_multiplier: ", dry_multiplier)
         if dry_sequence_breakers is None:
             dry_sequence_breakers = ["\n", ":", "\"", "*"]
         dry_sequence_breaker_ids = frozenset(tokenizer.encode(token)[0] for token in dry_sequence_breakers)
