@@ -5,6 +5,7 @@ import torch
 
 from vllm.sampling_params import LogitsProcessor
 from vllm.transformers_utils.tokenizer import AnyTokenizer
+from vllm.samplers.dry_sampler import DRYLogitsProcessor
 
 
 class AllowedTokenIdsLogitsProcessor:
@@ -40,6 +41,18 @@ def _get_allowed_token_ids_logits_processor(
     return AllowedTokenIdsLogitsProcessor(allowed_token_ids)
 
 
+@lru_cache(maxsize=32)
+def _get_dry_logits_processor(
+    dry_multiplier: float,
+    dry_base: float,
+    dry_allowed_length: int,
+    dry_sequence_breakers: FrozenSet[int],
+    _range: int,
+    vocab_size: int,
+) -> LogitsProcessor:
+    return DRYLogitsProcessor(dry_multiplier, dry_base, dry_allowed_length, dry_sequence_breakers, _range)
+
+
 def logit_bias_logits_processor(
     logit_bias: Dict[int, float],
     token_ids: List[int],
@@ -54,6 +67,11 @@ def get_logits_processors(
     logit_bias: Optional[Union[Dict[int, float], Dict[str, float]]],
     allowed_token_ids: Optional[List[int]],
     tokenizer: AnyTokenizer,
+    dry_multiplier: float = 0,
+    dry_base: float = 1.75,
+    dry_allowed_length: int = 2,
+    dry_sequence_breakers: Optional[List[str]] = None,
+    dry_range: int = -1,
 ) -> List[LogitsProcessor]:
     logits_processors: List[LogitsProcessor] = []
     if logit_bias:
@@ -82,5 +100,20 @@ def get_logits_processors(
         logits_processors.append(
             _get_allowed_token_ids_logits_processor(
                 frozenset(allowed_token_ids), tokenizer.vocab_size))
+
+    if dry_multiplier > 0:
+        if dry_sequence_breakers is None:
+            dry_sequence_breakers = ["\n", ":", "\"", "*"]
+        dry_sequence_breaker_ids = frozenset(tokenizer.encode(token)[0] for token in dry_sequence_breakers)
+        logits_processors.append(
+            _get_dry_logits_processor(
+                dry_multiplier,
+                dry_base,
+                dry_allowed_length,
+                dry_sequence_breaker_ids,
+                dry_range,
+                tokenizer.vocab_size,
+            )
+        )
 
     return logits_processors
